@@ -5,7 +5,7 @@
 import typing as T
 
 from collections import defaultdict
-
+import asyncio
 
 class HandlerNotFound(Exception):
     """Raised if a handler wasn't found"""
@@ -128,5 +128,26 @@ class Observable:
             return False
 
         for callback in callbacks:
-            callback(*args, **kw)
+            if asyncio.iscoroutinefunction(callback):
+                if len(kw) > 0:
+                    raise SyntaxError("named args are not supported by asyncio in synchronous mode")
+                # It is a coroutine function so we need to wrap it into a task (i.e. like a thread) - this is non-blocking 
+                asyncio.create_task(asyncio.get_running_loop().run_in_executor(None, callback, args))
+            else:
+                callback(*args, **kw)
+        return True
+
+    async def trigger_async(self, event: str, *args: T.Any, **kw: T.Any) -> bool:
+        """Triggers all handlers which are subscribed to an event.
+        Returns True when there were callbacks to execute, False otherwise."""
+
+        callbacks = list(self._events.get(event, []))
+        if not callbacks:
+            return False
+
+        for callback in callbacks:
+            if asyncio.iscoroutinefunction(callback):
+                await callback(*args, **kw)
+            else:
+                callback(*args, **kw)
         return True

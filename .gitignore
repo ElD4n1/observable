@@ -17,3 +17,5 @@ env*
 
 # mypy
 .mypy_cache
+
+*.egg-info
