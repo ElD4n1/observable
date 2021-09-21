@@ -5,7 +5,9 @@
 import typing as T
 
 from collections import defaultdict
+
 import asyncio
+from asyncio.events import AbstractEventLoop
 
 class HandlerNotFound(Exception):
     """Raised if a handler wasn't found"""
@@ -35,6 +37,7 @@ class Observable:
 
     def __init__(self) -> None:
         self._events = defaultdict(list)  # type: T.DefaultDict[str, T.List[T.Callable]]
+        self._event_loop: AbstractEventLoop = None
 
     def get_all_handlers(self) -> T.Dict[str, T.List[T.Callable]]:
         """Returns a dict with event names as keys and lists of
@@ -129,10 +132,10 @@ class Observable:
 
         for callback in callbacks:
             if asyncio.iscoroutinefunction(callback):
-                if len(kw) > 0:
-                    raise SyntaxError("named args are not supported by asyncio in synchronous mode")
+                if self._event_loop is None:
+                    self._event_loop = asyncio.new_event_loop()
                 # It is a coroutine function so we need to wrap it into a task (i.e. like a thread) - this is non-blocking 
-                asyncio.create_task(asyncio.get_running_loop().run_in_executor(None, callback, args))
+                self._event_loop.create_task(callback(*args, **kw))
             else:
                 callback(*args, **kw)
         return True
