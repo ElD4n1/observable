@@ -6,6 +6,7 @@ import typing as T
 
 from collections import defaultdict
 
+import threading
 import asyncio
 from asyncio.events import AbstractEventLoop
 
@@ -133,7 +134,7 @@ class Observable:
         for callback in callbacks:
             if asyncio.iscoroutinefunction(callback):
                 if self._event_loop is None:
-                    self._event_loop = asyncio.new_event_loop()
+                    self._init_event_loop()
                 # It is a coroutine function so we need to wrap it into a task (i.e. like a thread) - this is non-blocking 
                 self._event_loop.create_task(callback(*args, **kw))
             else:
@@ -154,3 +155,16 @@ class Observable:
             else:
                 callback(*args, **kw)
         return True
+
+    def _init_event_loop(self):
+        self._event_loop = asyncio.new_event_loop()
+        event_loop_thread = threading.Thread(target=self._event_loop.run_forever)
+        event_loop_thread.start()
+
+    def dispose(self):
+        if self._event_loop is not None:
+            if self._event_loop.is_running():
+                self._event_loop.stop()
+            if not self._event_loop.is_closed():
+                self._event_loop.close()
+            self._event_loop = None
