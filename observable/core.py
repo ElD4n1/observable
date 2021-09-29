@@ -165,6 +165,4 @@ class Observable:
         if self._event_loop is not None:
             if self._event_loop.is_running():
                 self._event_loop.stop()
-            if not self._event_loop.is_closed():
-                self._event_loop.close()
             self._event_loop = None
