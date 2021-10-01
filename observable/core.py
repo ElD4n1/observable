@@ -135,8 +135,8 @@ class Observable:
             if asyncio.iscoroutinefunction(callback):
                 if self._event_loop is None:
                     self._init_event_loop()
-                # It is a coroutine function so we need to wrap it into a future to execute it in a different thread - this is non-blocking 
-                asyncio.run_coroutine_threadsafe(callback(*args, **kw), self._event_loop)
+                # It is a coroutine function so we need to wrap it into a future to execute it in an event loop - this is blocking
+                asyncio.run_coroutine_threadsafe(callback(*args, **kw), self._event_loop).result()
             else:
                 callback(*args, **kw)
         return True
